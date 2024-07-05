@@ -22,4 +22,13 @@ public interface MistralAiApi {
     @GET("models")
     @Headers({"Content-Type: application/json"})
     Call<MistralAiModelResponse> models();
+
+    @POST("fim/completions")
+    @Headers({"Content-Type: application/json", "Accept: application/json"})
+    Call<MistralAiChatCompletionResponse> fimCompletion(@Body MistralAiFimCompletionRequest request);
+
+    @POST("fim/completions")
+    @Headers({"Content-Type: application/json", "Accept: application/json"})
+    @Streaming
+    Call<ResponseBody> streamingFimCompletion(@Body MistralAiFimCompletionRequest request);
 }
