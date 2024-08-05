@@ -216,6 +216,100 @@ public class DefaultMistralAiClient extends MistralAiClient {
         }
     }
 
+    @Override
+    public MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request) {
+        try {
+            retrofit2.Response<MistralAiChatCompletionResponse> retrofitResponse
+                    = mistralAiApi.fimCompletion(request).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void streamingFimCompletion(MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler) {
+        EventSourceListener eventSourceListener = new EventSourceListener() {
+            final StringBuffer contentBuilder = new StringBuffer();
+            TokenUsage tokenUsage;
+            FinishReason finishReason;
+
+            @Override
+            public void onOpen(EventSource eventSource, okhttp3.Response response) {
+                if (logStreamingResponses) {
+                    LOGGER.debug("onOpen()");
+                }
+            }
+
+            @Override
+            public void onEvent(EventSource eventSource, String id, String type, String data) {
+                if (logStreamingResponses) {
+                    LOGGER.debug("onEvent() {}", data);
+                }
+                if ("[DONE]".equals(data)) {
+                    Response<String> response = Response.from(
+                            contentBuilder.toString(),
+                            tokenUsage,
+                            finishReason
+                    );
+                    handler.onComplete(response);
+                } else {
+                    try {
+                        MistralAiChatCompletionResponse chatCompletionResponse = OBJECT_MAPPER.readValue(data, MistralAiChatCompletionResponse.class);
+                        MistralAiChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
+
+                        String chunk = choice.getDelta().getContent();
+                        if (isNotNullOrBlank(chunk)) {
+                            contentBuilder.append(chunk);
+                            handler.onNext(chunk);
+                        }
+
+                        MistralAiUsage usageInfo = chatCompletionResponse.getUsage();
+                        if (usageInfo != null) {
+                            this.tokenUsage = tokenUsageFrom(usageInfo);
+                        }
+
+                        String finishReasonString = choice.getFinishReason();
+                        if (finishReasonString != null) {
+                            this.finishReason = finishReasonFrom(finishReasonString);
+                        }
+                    } catch (Exception e) {
+                        handler.onError(e);
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(EventSource eventSource, Throwable t, okhttp3.Response response) {
+                if (logStreamingResponses) {
+                    LOGGER.debug("onFailure()", t);
+                }
+                if (t != null) {
+                    handler.onError(t);
+                } else {
+                    handler.onError(new RuntimeException(String.format("status code: %s; body: %s", response.code(), response.body())));
+                }
+            }
+
+            @Override
+            public void onClosed(EventSource eventSource) {
+                if (logStreamingResponses) {
+                    LOGGER.debug("onClosed()");
+                }
+            }
+        };
+
+        EventSources.createFactory(this.okHttpClient)
+                .newEventSource(
+                        mistralAiApi.streamingFimCompletion(request).request(),
+                        eventSourceListener);
+    }
+
     private RuntimeException toException(retrofit2.Response<?> retrofitResponse) throws IOException {
         int code = retrofitResponse.code();
         if (code >= 400) {
