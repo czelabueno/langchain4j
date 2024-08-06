@@ -14,6 +14,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
@@ -403,7 +404,9 @@ class MistralAiStreamingChatModelIT {
         // then
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
-        assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
+        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text())
+                        .containsIgnoringWhitespaces(date));
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
@@ -467,7 +470,9 @@ class MistralAiStreamingChatModelIT {
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
+        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text())
+                        .containsIgnoringWhitespaces(date));
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
@@ -599,7 +604,9 @@ class MistralAiStreamingChatModelIT {
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(aiMessage2.text()).containsIgnoringWhitespaces("March 11, 2024");
+        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text())
+                        .containsIgnoringWhitespaces(date));
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
