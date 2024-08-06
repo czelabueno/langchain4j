@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai.internal.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.model.output.FinishReason;
@@ -15,6 +16,7 @@ import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
@@ -66,7 +68,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
         this.okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(formattedUrlForRetrofit(builder.baseUrl))
+                .baseUrl(Utils.ensureTrailingForwardSlash(builder.baseUrl))
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
@@ -74,15 +76,39 @@ public class DefaultMistralAiClient extends MistralAiClient {
         mistralAiApi = retrofit.create(MistralAiApi.class);
     }
 
-    private static String formattedUrlForRetrofit(String baseUrl) {
-        return baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+    @Override
+    public MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request) {
+        return executeApiCall(mistralAiApi.chatCompletion(request));
     }
 
     @Override
-    public MistralAiChatCompletionResponse chatCompletion(MistralAiChatCompletionRequest request) {
+    public void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
+        executeStreamingApiCall(mistralAiApi.streamingChatCompletion(request), handler);
+    }
+
+    @Override
+    public MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request) {
+        return executeApiCall(mistralAiApi.embedding(request));
+    }
+
+    @Override
+    public MistralAiModelResponse listModels() {
+        return executeApiCall(mistralAiApi.models());
+    }
+
+    @Override
+    public MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request) {
+        return executeApiCall(mistralAiApi.fimCompletion(request));
+    }
+
+    @Override
+    public void streamingFimCompletion(MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler) {
+        executeStreamingApiCall(mistralAiApi.streamingFimCompletion(request), handler);
+    }
+
+    private <T> T executeApiCall(Call<T> apiCall) {
         try {
-            retrofit2.Response<MistralAiChatCompletionResponse> retrofitResponse
-                    = mistralAiApi.chatCompletion(request).execute();
+            retrofit2.Response<T> retrofitResponse = apiCall.execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -93,8 +119,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
         }
     }
 
-    @Override
-    public void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
+    private <T> void executeStreamingApiCall(Call<ResponseBody> apiCall, StreamingResponseHandler<T> handler) {
         EventSourceListener eventSourceListener = new EventSourceListener() {
             final StringBuffer contentBuilder = new StringBuffer();
             List<ToolExecutionRequest> toolExecutionRequests;
@@ -114,15 +139,15 @@ public class DefaultMistralAiClient extends MistralAiClient {
                     LOGGER.debug("onEvent() {}", data);
                 }
                 if ("[DONE]".equals(data)) {
-                    AiMessage aiMessage;
+                    T responseContent;
                     if (!isNullOrEmpty(toolExecutionRequests)){
-                        aiMessage = AiMessage.from(toolExecutionRequests);
+                        responseContent = (T) AiMessage.from(toolExecutionRequests);
                     } else {
-                        aiMessage = AiMessage.from(contentBuilder.toString());
+                        responseContent = (T) AiMessage.from(contentBuilder.toString());
                     }
 
-                    Response<AiMessage> response = Response.from(
-                            aiMessage,
+                    Response<T> response = Response.from(
+                            responseContent,
                             tokenUsage,
                             finishReason
                     );
@@ -133,7 +158,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                         MistralAiChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
 
                         String chunk = choice.getDelta().getContent();
-                        if (isNotNullOrBlank(chunk)) {
+                        if (isNotNullOrEmpty(chunk)) {
                             contentBuilder.append(chunk);
                             handler.onNext(chunk);
                         }
@@ -182,131 +207,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
         EventSources.createFactory(this.okHttpClient)
                 .newEventSource(
-                        mistralAiApi.streamingChatCompletion(request).request(),
-                        eventSourceListener);
-    }
-
-    @Override
-    public MistralAiEmbeddingResponse embedding(MistralAiEmbeddingRequest request) {
-        try {
-            retrofit2.Response<MistralAiEmbeddingResponse> retrofitResponse
-                    = mistralAiApi.embedding(request).execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public MistralAiModelResponse listModels() {
-        try {
-            retrofit2.Response<MistralAiModelResponse> retrofitResponse
-                    = mistralAiApi.models().execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public MistralAiChatCompletionResponse fimCompletion(MistralAiFimCompletionRequest request) {
-        try {
-            retrofit2.Response<MistralAiChatCompletionResponse> retrofitResponse
-                    = mistralAiApi.fimCompletion(request).execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public void streamingFimCompletion(MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler) {
-        EventSourceListener eventSourceListener = new EventSourceListener() {
-            final StringBuffer contentBuilder = new StringBuffer();
-            TokenUsage tokenUsage;
-            FinishReason finishReason;
-
-            @Override
-            public void onOpen(EventSource eventSource, okhttp3.Response response) {
-                if (logStreamingResponses) {
-                    LOGGER.debug("onOpen()");
-                }
-            }
-
-            @Override
-            public void onEvent(EventSource eventSource, String id, String type, String data) {
-                if (logStreamingResponses) {
-                    LOGGER.debug("onEvent() {}", data);
-                }
-                if ("[DONE]".equals(data)) {
-                    Response<String> response = Response.from(
-                            contentBuilder.toString(),
-                            tokenUsage,
-                            finishReason
-                    );
-                    handler.onComplete(response);
-                } else {
-                    try {
-                        MistralAiChatCompletionResponse chatCompletionResponse = OBJECT_MAPPER.readValue(data, MistralAiChatCompletionResponse.class);
-                        MistralAiChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
-
-                        String chunk = choice.getDelta().getContent();
-                        if (isNotNullOrBlank(chunk)) {
-                            contentBuilder.append(chunk);
-                            handler.onNext(chunk);
-                        }
-
-                        MistralAiUsage usageInfo = chatCompletionResponse.getUsage();
-                        if (usageInfo != null) {
-                            this.tokenUsage = tokenUsageFrom(usageInfo);
-                        }
-
-                        String finishReasonString = choice.getFinishReason();
-                        if (finishReasonString != null) {
-                            this.finishReason = finishReasonFrom(finishReasonString);
-                        }
-                    } catch (Exception e) {
-                        handler.onError(e);
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(EventSource eventSource, Throwable t, okhttp3.Response response) {
-                if (logStreamingResponses) {
-                    LOGGER.debug("onFailure()", t);
-                }
-                if (t != null) {
-                    handler.onError(t);
-                } else {
-                    handler.onError(new RuntimeException(String.format("status code: %s; body: %s", response.code(), response.body())));
-                }
-            }
-
-            @Override
-            public void onClosed(EventSource eventSource) {
-                if (logStreamingResponses) {
-                    LOGGER.debug("onClosed()");
-                }
-            }
-        };
-
-        EventSources.createFactory(this.okHttpClient)
-                .newEventSource(
-                        mistralAiApi.streamingFimCompletion(request).request(),
+                        apiCall.request(),
                         eventSourceListener);
     }
 
