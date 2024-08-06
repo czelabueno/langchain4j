@@ -32,6 +32,7 @@ public class MistralAiCompletionModel implements LanguageModel {
     private String suffix;
     private final Double temperature;
     private final Integer maxTokens;
+    private final Integer minTokens;
     private final Double topP;
     private final Integer randomSeed;
     private final List<String> stops;
@@ -46,6 +47,7 @@ public class MistralAiCompletionModel implements LanguageModel {
      * @param modelName     the name of the Mistral AI model to use
      * @param temperature   the temperature parameter for generating responses
      * @param maxTokens     the maximum number of tokens to generate in a response
+     * @param minTokens     the minimum number of tokens to generate in a response
      * @param topP          the top-p parameter for generating responses
      * @param randomSeed    the random seed for generating responses
      * @param stops         a list of tokens at which the model should stop generating tokens
@@ -62,6 +64,7 @@ public class MistralAiCompletionModel implements LanguageModel {
                                     String modelName,
                                     Double temperature,
                                     Integer maxTokens,
+                                    Integer minTokens,
                                     Double topP,
                                     Integer randomSeed,
                                     List<String> stops,
@@ -81,6 +84,7 @@ public class MistralAiCompletionModel implements LanguageModel {
         this.suffix = "";
         this.temperature = temperature;
         this.maxTokens = maxTokens;
+        this.minTokens = getOrDefault(minTokens,0);
         this.topP = topP;
         this.randomSeed = randomSeed;
         this.stops = stops;
@@ -124,6 +128,7 @@ public class MistralAiCompletionModel implements LanguageModel {
                 .suffix(this.suffix)
                 .temperature(this.temperature)
                 .maxTokens(this.maxTokens)
+                .minTokens(this.minTokens)
                 .topP(this.topP)
                 .randomSeed(this.randomSeed)
                 .stop(this.stops)

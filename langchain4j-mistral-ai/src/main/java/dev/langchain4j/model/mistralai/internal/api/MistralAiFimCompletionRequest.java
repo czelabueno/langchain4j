@@ -27,6 +27,7 @@ public class MistralAiFimCompletionRequest {
     private String suffix;
     private Double temperature;
     private Integer maxTokens;
+    private Integer minTokens;
     private Double topP;
     private Boolean stream;
     private Integer randomSeed;
