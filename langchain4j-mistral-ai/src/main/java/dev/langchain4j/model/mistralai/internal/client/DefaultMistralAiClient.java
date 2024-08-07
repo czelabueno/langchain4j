@@ -22,6 +22,7 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.*;
@@ -83,7 +84,13 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
     @Override
     public void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
-        executeStreamingApiCall(mistralAiApi.streamingChatCompletion(request), handler);
+        executeStreamingApiCall(mistralAiApi.streamingChatCompletion(request), handler, (content, toolExecutionRequests) -> {
+                if (!isNullOrEmpty(toolExecutionRequests)) {
+                    return AiMessage.from(toolExecutionRequests);
+                } else {
+                    return AiMessage.from(content);
+                }
+        });
     }
 
     @Override
@@ -103,7 +110,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
     @Override
     public void streamingFimCompletion(MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler) {
-        executeStreamingApiCall(mistralAiApi.streamingFimCompletion(request), handler);
+        executeStreamingApiCall(mistralAiApi.streamingFimCompletion(request), handler, (content, toolExecutionRequests) -> content);
     }
 
     private <T> T executeApiCall(Call<T> apiCall) {
@@ -119,7 +126,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
         }
     }
 
-    private <T> void executeStreamingApiCall(Call<ResponseBody> apiCall, StreamingResponseHandler<T> handler) {
+    private <T> void executeStreamingApiCall(Call<ResponseBody> apiCall, StreamingResponseHandler<T> handler, BiFunction<String, List<ToolExecutionRequest>, T> responseType) {
         EventSourceListener eventSourceListener = new EventSourceListener() {
             final StringBuffer contentBuilder = new StringBuffer();
             List<ToolExecutionRequest> toolExecutionRequests;
@@ -139,13 +146,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                     LOGGER.debug("onEvent() {}", data);
                 }
                 if ("[DONE]".equals(data)) {
-                    T responseContent;
-                    if (!isNullOrEmpty(toolExecutionRequests)){
-                        responseContent = (T) AiMessage.from(toolExecutionRequests);
-                    } else {
-                        responseContent = (T) AiMessage.from(contentBuilder.toString());
-                    }
-
+                    T responseContent = responseType.apply(contentBuilder.toString(), toolExecutionRequests);
                     Response<T> response = Response.from(
                             responseContent,
                             tokenUsage,
