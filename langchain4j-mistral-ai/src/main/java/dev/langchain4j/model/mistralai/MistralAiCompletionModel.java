@@ -92,16 +92,6 @@ public class MistralAiCompletionModel implements LanguageModel {
     }
 
     /**
-     * Creates a MistralAiCompletionModel with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return a MistralAiCompletionModel
-     */
-    public static MistralAiCompletionModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
-    }
-
-    /**
      * Generates a completion for the given prompt and suffix.
      *
      * @param prompt the starting point of the text/code
@@ -154,8 +144,6 @@ public class MistralAiCompletionModel implements LanguageModel {
     public static class MistralAiCompletionModelBuilder {
 
         public MistralAiCompletionModelBuilder() {
-            // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public MistralAiCompletionModelBuilder modelName(String modelName) {

@@ -11,7 +11,12 @@ import org.junit.jupiter.api.Test;
 
 class MistralAiCompletionModelIT {
 
-    LanguageModel codestral = MistralAiCompletionModel.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
+    LanguageModel codestral = MistralAiCompletionModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MistralAiCodeModelName.CODESTRAL_LATEST)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
 
     @Test
     void should_generate_code_completion_and_return_token_usage_and_finish_reason_stop() {

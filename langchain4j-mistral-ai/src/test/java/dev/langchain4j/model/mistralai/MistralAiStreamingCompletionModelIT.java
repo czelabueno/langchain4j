@@ -12,8 +12,12 @@ import org.junit.jupiter.api.Test;
 
 class MistralAiStreamingCompletionModelIT {
 
-    StreamingLanguageModel codestralStream =
-            MistralAiStreamingCompletionModel.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
+    StreamingLanguageModel codestralStream = MistralAiStreamingCompletionModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MistralAiCodeModelName.CODESTRAL_LATEST)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
 
     @Test
     void should_stream_code_completion_and_return_token_usage_and_finish_reason_length() {

@@ -83,16 +83,6 @@ public class MistralAiStreamingCompletionModel implements StreamingLanguageModel
     }
 
     /**
-     * Creates a MistralAiStreamingCompletionModel with the specified API key.
-     *
-     * @param apiKey the API key for authentication
-     * @return a MistralAiStreamingCompletionModel
-     */
-    public static MistralAiStreamingCompletionModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
-    }
-
-    /**
      * Generates a completion for the given prompt and suffix.
      *
      * @param prompt  the prompt to generate a completion for
