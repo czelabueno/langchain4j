@@ -1,18 +1,17 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionRequest;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingCompletionModelBuilderFactory;
-import lombok.Builder;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import lombok.Builder;
 
 /**
  *  Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
@@ -52,18 +51,19 @@ public class MistralAiStreamingCompletionModel implements StreamingLanguageModel
      *                      The default value is 60 seconds.
      */
     @Builder
-    public MistralAiStreamingCompletionModel(String baseUrl,
-                                             String apiKey,
-                                             String modelName,
-                                             Double temperature,
-                                             Integer maxTokens,
-                                             Integer minTokens,
-                                             Double topP,
-                                             Integer randomSeed,
-                                             List<String> stops,
-                                             Boolean logRequests,
-                                             Boolean logResponses,
-                                             Duration timeout) {
+    public MistralAiStreamingCompletionModel(
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Double temperature,
+            Integer maxTokens,
+            Integer minTokens,
+            Double topP,
+            Integer randomSeed,
+            List<String> stops,
+            Boolean logRequests,
+            Boolean logResponses,
+            Duration timeout) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
@@ -76,7 +76,7 @@ public class MistralAiStreamingCompletionModel implements StreamingLanguageModel
         this.suffix = "";
         this.temperature = temperature;
         this.maxTokens = maxTokens;
-        this.minTokens = getOrDefault(minTokens,0);
+        this.minTokens = getOrDefault(minTokens, 0);
         this.topP = topP;
         this.randomSeed = randomSeed;
         this.stops = stops;
@@ -111,8 +111,7 @@ public class MistralAiStreamingCompletionModel implements StreamingLanguageModel
      * @param handler the handler to process the completion response
      */
     @Override
-    public void generate(String prompt,
-                         StreamingResponseHandler<String> handler) {
+    public void generate(String prompt, StreamingResponseHandler<String> handler) {
         ensureNotBlank(prompt, "Prompt");
 
         MistralAiFimCompletionRequest request = MistralAiFimCompletionRequest.builder()
@@ -132,7 +131,8 @@ public class MistralAiStreamingCompletionModel implements StreamingLanguageModel
     }
 
     public static MistralAiStreamingCompletionModelBuilder builder() {
-        for (MistralAiStreamingCompletionModelBuilderFactory factory : loadFactories(MistralAiStreamingCompletionModelBuilderFactory.class)) {
+        for (MistralAiStreamingCompletionModelBuilderFactory factory :
+                loadFactories(MistralAiStreamingCompletionModelBuilderFactory.class)) {
             return factory.get();
         }
         return new MistralAiStreamingCompletionModelBuilder();
@@ -140,8 +140,7 @@ public class MistralAiStreamingCompletionModel implements StreamingLanguageModel
 
     public static class MistralAiStreamingCompletionModelBuilder {
 
-        public MistralAiStreamingCompletionModelBuilder() {
-        }
+        public MistralAiStreamingCompletionModelBuilder() {}
 
         public MistralAiStreamingCompletionModelBuilder modelName(String modelName) {
             this.modelName = modelName;

@@ -19,6 +19,10 @@ public interface MistralAiApi {
     @Headers({"Content-Type: application/json", "Accept: application/json", "User-Agent: langchain4j-mistralai"})
     Call<MistralAiEmbeddingResponse> embedding(@Body MistralAiEmbeddingRequest request);
 
+    @POST("moderations")
+    @Headers({"Content-Type: application/json", "Accept: application/json", "User-Agent: langchain4j-mistralai"})
+    Call<MistralAiModerationResponse> moderations(@Body MistralAiModerationRequest request);
+
     @GET("models")
     @Headers({"Content-Type: application/json", "Accept: application/json", "User-Agent: langchain4j-mistralai"})
     Call<MistralAiModelResponse> models();

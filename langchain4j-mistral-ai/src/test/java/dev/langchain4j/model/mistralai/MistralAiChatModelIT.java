@@ -1,5 +1,12 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.output.FinishReason.*;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -10,19 +17,11 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.output.FinishReason.*;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 class MistralAiChatModelIT {
 
@@ -32,10 +31,10 @@ class MistralAiChatModelIT {
             .addParameter("transactionId", STRING)
             .build();
 
-    ChatLanguageModel mistralLargeModel = MistralAiChatModel.builder()
+    ChatLanguageModel ministral3b = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
-            .temperature(0.1)
+            .modelName("ministral-3b-latest")
+            .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -123,7 +122,7 @@ class MistralAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
-    //https://docs.mistral.ai/platform/guardrailing/
+    // https://docs.mistral.ai/platform/guardrailing/
     @Test
     void should_generate_system_prompt_to_enforce_guardrails() {
         // given
@@ -279,7 +278,8 @@ class MistralAiChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("retrieve-payment-status");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
@@ -315,7 +315,8 @@ class MistralAiChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("retrieve-payment-status");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
@@ -324,7 +325,8 @@ class MistralAiChatModelIT {
         chatMessages.add(aiMessage);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "{\"status\": \"PAID\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from(toolExecutionRequest, "{\"status\": \"PAID\"}");
         chatMessages.add(toolExecutionResultMessage);
 
         // when
@@ -366,7 +368,8 @@ class MistralAiChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("retrieve-payment-date");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
@@ -380,7 +383,8 @@ class MistralAiChatModelIT {
         chatMessages.add(aiMessage);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "{\"date\": \"2024-03-11\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from(toolExecutionRequest, "{\"date\": \"2024-03-11\"}");
         chatMessages.add(toolExecutionResultMessage);
 
         // when
@@ -389,9 +393,8 @@ class MistralAiChatModelIT {
         // then
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).containsIgnoringCase("T123");
-        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
-                .anySatisfy(date -> assertThat(aiMessage2.text())
-                        .containsIgnoringWhitespaces(date));
+        assertThat(Arrays.asList("March 11, 2024", "2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text()).containsIgnoringWhitespaces(date));
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
@@ -428,7 +431,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_multiple_tools_using_model_open8x22B_then_answer() {
+    void should_execute_multiple_tools_then_answer() {
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -443,18 +446,20 @@ class MistralAiChatModelIT {
         List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus, retrievePaymentDate);
 
         // when
-        Response<AiMessage> response = mistralLargeModel.generate(chatMessages, toolSpecifications);
+        Response<AiMessage> response = ministral3b.generate(chatMessages, toolSpecifications);
 
         // then
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo("retrieve-payment-status");
         assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage.toolExecutionRequests().get(1);
         assertThat(toolExecutionRequest2.name()).isEqualTo("retrieve-payment-date");
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
@@ -463,22 +468,23 @@ class MistralAiChatModelIT {
         chatMessages.add(aiMessage);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "{\"status\": \"PAID\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage1 =
+                ToolExecutionResultMessage.from(toolExecutionRequest1, "{\"status\": \"PAID\"}");
         chatMessages.add(toolExecutionResultMessage1);
-        ToolExecutionResultMessage toolExecutionResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "{\"date\": \"2024-03-11\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage2 =
+                ToolExecutionResultMessage.from(toolExecutionRequest2, "{\"date\": \"2024-03-11\"}");
         chatMessages.add(toolExecutionResultMessage2);
 
         // when
-        Response<AiMessage> response2 = mistralLargeModel.generate(chatMessages);
+        Response<AiMessage> response2 = ministral3b.generate(chatMessages);
 
         // then
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-      
-        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
-                .anySatisfy(date -> assertThat(aiMessage2.text())
-                        .containsIgnoringWhitespaces(date));
+
+        assertThat(Arrays.asList("March 11, 2024", "2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text()).containsIgnoringWhitespaces(date));
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
@@ -491,7 +497,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_code_generation_using_model_openCodestralMamba_and_return_finishReason(){
+    void should_code_generation_using_model_openCodestralMamba_and_return_finishReason() {
         // given
         UserMessage userMessage = userMessage("Write a java code for fibonacci");
 
@@ -534,11 +540,13 @@ class MistralAiChatModelIT {
         assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo("retrieve-payment-status");
         assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage.toolExecutionRequests().get(1);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage.toolExecutionRequests().get(1);
         assertThat(toolExecutionRequest2.name()).isEqualTo("retrieve-payment-date");
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
@@ -547,9 +555,11 @@ class MistralAiChatModelIT {
         chatMessages.add(aiMessage);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "{\"status\": \"PAID\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage1 =
+                ToolExecutionResultMessage.from(toolExecutionRequest1, "{\"status\": \"PAID\"}");
         chatMessages.add(toolExecutionResultMessage1);
-        ToolExecutionResultMessage toolExecutionResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "{\"date\": \"2024-03-11\"}");
+        ToolExecutionResultMessage toolExecutionResultMessage2 =
+                ToolExecutionResultMessage.from(toolExecutionRequest2, "{\"date\": \"2024-03-11\"}");
         chatMessages.add(toolExecutionResultMessage2);
 
         // when
@@ -559,9 +569,8 @@ class MistralAiChatModelIT {
         AiMessage aiMessage2 = response2.content();
         assertThat(aiMessage2.text()).contains("T123");
         assertThat(aiMessage2.text()).containsIgnoringCase("paid");
-        assertThat(Arrays.asList("March 11, 2024","2024-03-11"))
-                .anySatisfy(date -> assertThat(aiMessage2.text())
-                        .containsIgnoringWhitespaces(date));
+        assertThat(Arrays.asList("March 11, 2024", "2024-03-11"))
+                .anySatisfy(date -> assertThat(aiMessage2.text()).containsIgnoringWhitespaces(date));
 
         assertThat(aiMessage2.text()).contains("11", "2024");
         assertThat(aiMessage2.toolExecutionRequests()).isNull();

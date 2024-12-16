@@ -1,5 +1,11 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
@@ -7,16 +13,9 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiFimCompletionReques
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiCompletionModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import lombok.Builder;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import lombok.Builder;
 
 /**
  *  Represents a Mistral AI FIM Completion Model with a language completion interface, users can define the starting point of the text/code using a prompt, and the ending point of the text/code using an optional suffix and an optional stop.
@@ -59,19 +58,20 @@ public class MistralAiCompletionModel implements LanguageModel {
      * @param maxRetries    the maximum number of retries for API requests. It uses the default value 3 if not specified.
      */
     @Builder
-    public MistralAiCompletionModel(String baseUrl,
-                                    String apiKey,
-                                    String modelName,
-                                    Double temperature,
-                                    Integer maxTokens,
-                                    Integer minTokens,
-                                    Double topP,
-                                    Integer randomSeed,
-                                    List<String> stops,
-                                    Duration timeout,
-                                    Boolean logRequests,
-                                    Boolean logResponses,
-                                    Integer maxRetries) {
+    public MistralAiCompletionModel(
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Double temperature,
+            Integer maxTokens,
+            Integer minTokens,
+            Double topP,
+            Integer randomSeed,
+            List<String> stops,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses,
+            Integer maxRetries) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
@@ -84,7 +84,7 @@ public class MistralAiCompletionModel implements LanguageModel {
         this.suffix = "";
         this.temperature = temperature;
         this.maxTokens = maxTokens;
-        this.minTokens = getOrDefault(minTokens,0);
+        this.minTokens = getOrDefault(minTokens, 0);
         this.topP = topP;
         this.randomSeed = randomSeed;
         this.stops = stops;
@@ -140,12 +140,12 @@ public class MistralAiCompletionModel implements LanguageModel {
         return Response.from(
                 responseChoice.getMessage().getContent(),
                 tokenUsageFrom(response.getUsage()),
-                finishReasonFrom(responseChoice.getFinishReason())
-        );
+                finishReasonFrom(responseChoice.getFinishReason()));
     }
 
     public static MistralAiCompletionModelBuilder builder() {
-        for (MistralAiCompletionModelBuilderFactory factory : loadFactories(MistralAiCompletionModelBuilderFactory.class)) {
+        for (MistralAiCompletionModelBuilderFactory factory :
+                loadFactories(MistralAiCompletionModelBuilderFactory.class)) {
             return factory.get();
         }
         return new MistralAiCompletionModelBuilder();

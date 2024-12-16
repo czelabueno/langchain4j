@@ -1,47 +1,58 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
 
 public class AiServiceTokenStream implements TokenStream {
 
-    private int onNextInvoked;
-    private int onCompleteInvoked;
-    private int onRetrievedInvoked;
-    private int onErrorInvoked;
-    private int ignoreErrorsInvoked;
-
-    private final List<ChatMessage> messagesToSend;
-    private final List<Content> content;
+    private final List<ChatMessage> messages;
+    private final List<ToolSpecification> toolSpecifications;
+    private final Map<String, ToolExecutor> toolExecutors;
+    private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final Object memoryId;
 
     private Consumer<String> tokenHandler;
-    private Consumer<List<Content>> contentHandler;
+    private Consumer<List<Content>> contentsHandler;
+    private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<Throwable> errorHandler;
     private Consumer<Response<AiMessage>> completionHandler;
 
-    public AiServiceTokenStream(List<ChatMessage> messagesToSend, List<Content> content, AiServiceContext context, Object memoryId) {
-        this.onNextInvoked = 0;
-        this.onCompleteInvoked = 0;
-        this.onRetrievedInvoked = 0;
-        this.onErrorInvoked = 0;
-        this.ignoreErrorsInvoked = 0;
+    private int onNextInvoked;
+    private int onCompleteInvoked;
+    private int onRetrievedInvoked;
+    private int onToolExecutedInvoked;
+    private int onErrorInvoked;
+    private int ignoreErrorsInvoked;
 
-        this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
-        this.content = content;
+    public AiServiceTokenStream(List<ChatMessage> messages,
+                                List<ToolSpecification> toolSpecifications,
+                                Map<String, ToolExecutor> toolExecutors,
+                                List<Content> retrievedContents,
+                                AiServiceContext context,
+                                Object memoryId) {
+        this.messages = ensureNotEmpty(messages, "messages");
+        this.toolSpecifications = copyIfNotNull(toolSpecifications);
+        this.toolExecutors = copyIfNotNull(toolExecutors);
+        this.retrievedContents = retrievedContents;
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
         ensureNotNull(context.streamingChatModel, "streamingChatModel");
@@ -55,9 +66,16 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onRetrieved(Consumer<List<Content>> contentHandler) {
-        this.contentHandler = contentHandler;
+    public TokenStream onRetrieved(Consumer<List<Content>> contentsHandler) {
+        this.contentsHandler = contentsHandler;
         this.onRetrievedInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecutionHandler) {
+        this.toolExecutionHandler = toolExecutionHandler;
+        this.onToolExecutedInvoked++;
         return this;
     }
 
@@ -90,20 +108,23 @@ public class AiServiceTokenStream implements TokenStream {
                 context,
                 memoryId,
                 tokenHandler,
+                toolExecutionHandler,
                 completionHandler,
                 errorHandler,
-                initTemporaryMemory(context, messagesToSend),
-                new TokenUsage()
+                initTemporaryMemory(context, messages),
+                new TokenUsage(),
+                toolSpecifications,
+                toolExecutors
         );
 
-        if (contentHandler != null && content != null) {
-            contentHandler.accept(content);
+        if (contentsHandler != null && retrievedContents != null) {
+            contentsHandler.accept(retrievedContents);
         }
 
-        if (context.toolSpecifications != null) {
-            context.streamingChatModel.generate(messagesToSend, context.toolSpecifications, handler);
+        if (isNullOrEmpty(toolSpecifications)) {
+            context.streamingChatModel.generate(messages, handler);
         } else {
-            context.streamingChatModel.generate(messagesToSend, handler);
+            context.streamingChatModel.generate(messages, toolSpecifications, handler);
         }
     }
 
@@ -111,15 +132,15 @@ public class AiServiceTokenStream implements TokenStream {
         if (onNextInvoked != 1) {
             throw new IllegalConfigurationException("onNext must be invoked exactly 1 time");
         }
-
         if (onCompleteInvoked > 1) {
             throw new IllegalConfigurationException("onComplete must be invoked at most 1 time");
         }
-
         if (onRetrievedInvoked > 1) {
             throw new IllegalConfigurationException("onRetrieved must be invoked at most 1 time");
         }
-
+        if (onToolExecutedInvoked > 1) {
+            throw new IllegalConfigurationException("onToolExecuted must be invoked at most 1 time");
+        }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
             throw new IllegalConfigurationException("One of onError or ignoreErrors must be invoked exactly 1 time");
         }

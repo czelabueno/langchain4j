@@ -1,14 +1,13 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.Arrays;
-
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class MistralAiCompletionModelIT {
 
@@ -21,12 +20,7 @@ class MistralAiCompletionModelIT {
         // When
         Response<String> response = codestral.generate(codePrompt);
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s",
-                        codePrompt,
-                        response.content())
-                ); // print code completion
+        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -46,22 +40,14 @@ class MistralAiCompletionModelIT {
                 .logRequests(true)
                 .build();
 
-        String codePrompt = "public class HelloWorld {\n" +
-                            "\tpublic static void main(String[] args) {\n" +
-                            "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
-        String suffix = "\t\tSystem.out.println(response);\n" +
-                        "\t}\n" +
-                        "}";
+        String codePrompt = "public class HelloWorld {\n" + "\tpublic static void main(String[] args) {\n"
+                + "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
+        String suffix = "\t\tSystem.out.println(response);\n" + "\t}\n" + "}";
 
         // When
         Response<String> response = codestral.generate(codePrompt, suffix);
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s%s",
-                        codePrompt,
-                        response.content(),
-                        suffix)); // print code completion
+        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
 
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);
@@ -84,12 +70,7 @@ class MistralAiCompletionModelIT {
         // When
         Response<String> response = codestral.generate(codePrompt, suffix);
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s",
-                        codePrompt,
-                        response.content())
-                ); // print code completion
+        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
 
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.finishReason()).isEqualTo(STOP);
@@ -106,23 +87,14 @@ class MistralAiCompletionModelIT {
                 .logRequests(true)
                 .build();
 
-        String codePrompt = "public class HelloWorld {\n" +
-                "\tpublic static void main(String[] args) {\n" +
-                "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
-        String suffix = "\t\tSystem.out.println(response);\n" +
-                "\t}\n" +
-                "}";
+        String codePrompt = "public class HelloWorld {\n" + "\tpublic static void main(String[] args) {\n"
+                + "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
+        String suffix = "\t\tSystem.out.println(response);\n" + "\t}\n" + "}";
 
         // When
         Response<String> response = codestral.generate(codePrompt, suffix);
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s%s",
-                        codePrompt,
-                        response.content(),
-                        suffix)
-        ); // print code completion
+        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
 
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);

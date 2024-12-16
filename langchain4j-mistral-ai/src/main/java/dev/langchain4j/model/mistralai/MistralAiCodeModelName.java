@@ -6,7 +6,6 @@ package dev.langchain4j.model.mistralai;
  * @see <a href="https://docs.mistral.ai/capabilities/code_generation/">More about Mistral Code generation models</a>
  */
 public enum MistralAiCodeModelName {
-
     CODESTRAL_LATEST("codestral-latest"),
     OPEN_CODESTRAL_MAMBA("open-codestral-mamba");
 

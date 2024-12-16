@@ -4,18 +4,15 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import org.assertj.core.data.Percentage;
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 public abstract class EmbeddingStoreWithoutMetadataIT {
@@ -234,6 +231,64 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     }
 
     @Test
+    void should_add_multiple_embeddings_with_ids_and_segments() {
+
+        final String id1 = randomUUID();
+        final String id2 = randomUUID();
+
+        // given
+        TextSegment firstSegment = TextSegment.from("hello");
+        Embedding firstEmbedding = embeddingModel().embed(firstSegment.text()).content();
+
+        TextSegment secondSegment = TextSegment.from("hi");
+        Embedding secondEmbedding = embeddingModel().embed(secondSegment.text()).content();
+
+        embeddingStore().addAll(
+                asList(id1, id2),
+                asList(firstEmbedding, secondEmbedding),
+                asList(firstSegment, secondSegment)
+        );
+
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
+
+        // when
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
+
+        // then
+        assertThat(relevant).hasSize(2);
+        assertThat(relevant.get(0)).isNotNull();
+        assertThat(relevant.get(1)).isNotNull();
+        assertThat(relevant.get(0).embeddingId()).isEqualTo(id1);
+        assertThat(relevant.get(1).embeddingId()).isEqualTo(id2);
+
+        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
+        assertThat(firstMatch.score()).isCloseTo(1, percentage());
+        assertThat(firstMatch.embeddingId()).isEqualTo(id1);
+        if (assertEmbedding()) {
+            assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+        }
+        assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
+
+        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
+        assertThat(secondMatch.score()).isCloseTo(
+                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
+                percentage()
+        );
+        assertThat(secondMatch.embeddingId()).isEqualTo(id2);
+        if (assertEmbedding()) {
+            assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
+                    .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
+        }
+        assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build()).matches()).isEqualTo(relevant);
+    }
+
+    @Test
     void should_find_with_min_score() {
 
         // given
@@ -354,14 +409,6 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .queryEmbedding(referenceEmbedding)
                 .maxResults(1)
                 .build()).matches()).isEqualTo(relevant);
-    }
-
-    protected void awaitUntilAsserted(ThrowingRunnable assertion) {
-        Awaitility.await()
-                .atMost(Duration.ofSeconds(60))
-                .pollDelay(Duration.ofSeconds(0))
-                .pollInterval(Duration.ofMillis(300))
-                .untilAsserted(assertion);
     }
 
     protected List<EmbeddingMatch<TextSegment>> getAllEmbeddings() {

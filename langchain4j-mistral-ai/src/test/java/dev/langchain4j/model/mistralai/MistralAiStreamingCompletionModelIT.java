@@ -1,19 +1,19 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
-
 import java.util.Arrays;
-
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class MistralAiStreamingCompletionModelIT {
 
-    StreamingLanguageModel codestralStream = MistralAiStreamingCompletionModel.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
+    StreamingLanguageModel codestralStream =
+            MistralAiStreamingCompletionModel.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
 
     @Test
     void should_stream_code_completion_and_return_token_usage_and_finish_reason_length() {
@@ -27,12 +27,7 @@ class MistralAiStreamingCompletionModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s",
-                        codePrompt,
-                        response.content())
-                ); // print code completion
+        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
@@ -52,12 +47,9 @@ class MistralAiStreamingCompletionModelIT {
                 .logRequests(true)
                 .build();
 
-        String codePrompt = "public class HelloWorld {\n" +
-                "\tpublic static void main(String[] args) {\n" +
-                "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
-        String suffix = "\t\tSystem.out.println(response);\n" +
-                "\t}\n" +
-                "}";
+        String codePrompt = "public class HelloWorld {\n" + "\tpublic static void main(String[] args) {\n"
+                + "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
+        String suffix = "\t\tSystem.out.println(response);\n" + "\t}\n" + "}";
 
         // When
         TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
@@ -66,12 +58,7 @@ class MistralAiStreamingCompletionModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s%s",
-                        codePrompt,
-                        response.content(),
-                        suffix)); // print code completion
+        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
 
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);
@@ -98,12 +85,7 @@ class MistralAiStreamingCompletionModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s",
-                        codePrompt,
-                        response.content())
-                ); // print code completion
+        System.out.println(String.format("%s%s", codePrompt, response.content())); // print code completion
 
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.finishReason()).isEqualTo(STOP);
@@ -120,12 +102,9 @@ class MistralAiStreamingCompletionModelIT {
                 .logRequests(true)
                 .build();
 
-        String codePrompt = "public class HelloWorld {\n" +
-                "\tpublic static void main(String[] args) {\n" +
-                "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
-        String suffix = "\t\tSystem.out.println(response);\n" +
-                "\t}\n" +
-                "}";
+        String codePrompt = "public class HelloWorld {\n" + "\tpublic static void main(String[] args) {\n"
+                + "\t\tChatLanguageModel model = MistralAiChatModel.withApiKey(ApiKeys.MISTRALAI_API_KEY);";
+        String suffix = "\t\tSystem.out.println(response);\n" + "\t}\n" + "}";
 
         // When
         TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
@@ -134,13 +113,7 @@ class MistralAiStreamingCompletionModelIT {
         Response<String> response = handler.get();
 
         // Then
-        System.out.println(
-                String.format(
-                        "%s%s%s",
-                        codePrompt,
-                        response.content(),
-                        suffix)
-        ); // print code completion
+        System.out.println(String.format("%s%s%s", codePrompt, response.content(), suffix)); // print code completion
 
         assertThat(response.content()).doesNotContainIgnoringCase(codePrompt);
         assertThat(response.content()).doesNotContainIgnoringCase(suffix);
